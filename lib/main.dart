@@ -1,4 +1,5 @@
 import 'dart:convert';
+import "modele/cours.dart";
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -37,6 +38,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  var _listOfCours;
+  List<String> _selectedRooms = [];
   List<String> _rooms = [];
   List<bool> _isCheckedList = [];
 
@@ -51,10 +54,13 @@ class _MyHomePageState extends State<MyHomePage> {
     List<String> checkedRooms = [];
     for (int i = 0; i < _isCheckedList.length; i++) {
       if (_isCheckedList[i]) {
-        checkedRooms.add(_rooms[i]);
+        setState(() {
+          _selectedRooms.add(_rooms[i]);
+        });
       }
     }
-    print(checkedRooms);
+
+    _fetchRoomInformations(_selectedRooms);
   }
 
   void _handleCheckboxValueChanged(int index, bool value) {
@@ -64,9 +70,6 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _fetchRooms() async {
-    final url = Uri.parse(
-        "https://dptinfo.iutmetz.univ-lorraine.fr/applis/flutter_api_s1/api/rooms/findAllMachine.php");
-
     final response = await http.get(Uri.parse(
         "https://dptinfo.iutmetz.univ-lorraine.fr/applis/flutter_api_s1/api/rooms/findAllMachine.php"));
 
@@ -79,6 +82,39 @@ class _MyHomePageState extends State<MyHomePage> {
       });
     });
   }
+
+  Future<void> _fetchRoomInformations(List<String> rooms) async {
+    final url = Uri.parse(
+        "https://dptinfo.iutmetz.univ-lorraine.fr/applis/flutter_api_s1/api/courses/findRoomsByWeek.php?date=2023-03-27&rooms=${json.encode(rooms)}");
+
+    final response = await http.get(url);
+
+    final data = json.decode(response.body);
+
+    setState(() {
+      data.forEach((key, value) {
+        for (int i = 0; i < value.length; i++) {
+          _listOfCours.add(value[i]["matiere"]);
+        }
+      });
+    });
+
+    print(_listOfCours);
+    /* 
+    data.forEach((key, value) {
+      print("key : $key , value : ${value[0]["cours_date"]}");
+    }); */
+  }
+
+  /*  Widget buildRoomsInformations(List<string> rooms) {
+    return Container(
+        child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(rooms[0]),
+      ],
+    ));
+  } */
 
   Widget _buildRoomsCheckboxs(List<String> listOfRooms) {
     return Wrap(
