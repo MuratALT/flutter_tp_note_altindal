@@ -37,7 +37,8 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<dynamic> _rooms = [];
+  List<String> _rooms = [];
+  List<bool> _isCheckedList = [];
 
   @override
   void initState() {
@@ -46,38 +47,62 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
   }
 
-  Future<List<dynamic>> _fetchRooms() async {
+  void _handleRefresh() {
+    List<String> checkedRooms = [];
+    for (int i = 0; i < _isCheckedList.length; i++) {
+      if (_isCheckedList[i]) {
+        checkedRooms.add(_rooms[i]);
+      }
+    }
+    print(checkedRooms);
+  }
+
+  void _handleCheckboxValueChanged(int index, bool value) {
+    setState(() {
+      _isCheckedList[index] = value;
+    });
+  }
+
+  Future<void> _fetchRooms() async {
     final url = Uri.parse(
         "https://dptinfo.iutmetz.univ-lorraine.fr/applis/flutter_api_s1/api/rooms/findAllMachine.php");
 
     final response = await http.get(Uri.parse(
         "https://dptinfo.iutmetz.univ-lorraine.fr/applis/flutter_api_s1/api/rooms/findAllMachine.php"));
 
-    if (response.statusCode == 200) {
-      print(json.decode(response.body));
-      return json.decode(response.body);
-    } else {
-      throw Exception('Les données n\'ont pas pu être chargées correctement.');
-    }
+    setState(() {
+      _rooms = [];
+      final data = json.decode(response.body);
+      data.forEach((donnee) {
+        _rooms.add(donnee["nom"]);
+        _isCheckedList.add(false);
+      });
+    });
   }
 
-  Future<Widget> _buildRoomsCheckbox() async {
-    var listOfRooms = await _fetchRooms();
+  Widget _buildRoomsCheckboxs(List<String> listOfRooms) {
+    return Wrap(
+      spacing: 10.0, // espace entre chaque case à cocher
+      runSpacing: 10.0, // espace entre chaque ligne
+      children: listOfRooms.asMap().entries.map((entry) {
+        final index = entry.key;
+        final room = entry.value;
+        return _buildCheckboxWithRoom(index, room);
+      }).toList(),
+    );
+  }
 
-    return ListView.builder(
-      itemCount: listOfRooms.length,
-      itemBuilder: (context, index) {
-        final room = listOfRooms[index];
-        return Row(
-          children: [
-            Text(room['nom']),
-            Checkbox(
-              value: false,
-              onChanged: (newValue) {},
-            ),
-          ],
-        );
+  CheckboxListTile _buildCheckboxWithRoom(int index, String room) {
+    return CheckboxListTile(
+      title: Text(room),
+      value: _isCheckedList[index],
+      onChanged: (value) {
+        setState(() {
+          _isCheckedList[index] = value!;
+        });
       },
+      dense: true,
+      controlAffinity: ListTileControlAffinity.leading,
     );
   }
 
@@ -115,21 +140,24 @@ class _MyHomePageState extends State<MyHomePage> {
           // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '0',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            _rooms.isEmpty
+                ? const CircularProgressIndicator()
+                : Container(child: _buildRoomsCheckboxs(_rooms)),
+            ElevatedButton(
+                onPressed: _handleRefresh,
+                child:
+                    Text("Actualiser", style: TextStyle(color: Colors.white)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                ))
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _fetchRooms,
+      /* floatingActionButton: FloatingActionButton(
+        onPressed: _testData,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
-      ), // This trailing comma makes auto-formatting nicer for build methods.
+      ) */ // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
 }
